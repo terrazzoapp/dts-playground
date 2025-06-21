@@ -61,6 +61,28 @@ export function mergeTokens(a: unknown, b: unknown) {
   return b;
 }
 
+/** Get a flat array of IDs from a deeply-nested structure */
+export function getTokenIDs(json: any): Set<string> {
+  const ids = new Set<string>();
+  function walk(node: unknown, path: string[] = []) {
+    if (!node || typeof node !== 'object') {
+      return;
+    }
+    for (const [k, v] of Object.entries(node)) {
+      if (!v || typeof v !== 'object') {
+        continue;
+      }
+      if (v.$value) {
+        ids.add([...path, k].join('.'));
+      } else {
+        walk(v, [...path, k]);
+      }
+    }
+  }
+  walk(json);
+  return ids;
+}
+
 /**
  * Format design tokens spec JSON where $value is always on one line
  */
@@ -93,12 +115,38 @@ export function prettyJSON(json: any) {
       formatted
         .substring(start, end)
         .replace(/\n+\s+/g, ' ')
-        .replace(/\[\s*/g, '[')
-        .replace(/\\s*]/g, ']'),
+        .replace(/\[\s+/g, '[')
+        .replace(/\s+]/g, ']'),
     ]);
   }
   for (const [start, end, replacement] of replacements.reverse()) {
     formatted = `${formatted.substring(0, start)}${replacement}${formatted.substring(end)}`;
   }
   return formatted;
+}
+
+/** Given a JSON string of tokens, mark certain tokens as + or - */
+export function diffTokens(
+  tokensString: string,
+  changes: Record<string, '+' | '-'>,
+) {
+  let output = '';
+  const lines = tokensString.split('\n');
+  const tokenParts: string[] = [];
+  for (const ln of lines) {
+    const spaces = ln.indexOf('"');
+    let prefix = ' ';
+    if (spaces > 0) {
+      const i = (spaces - 2) / 2;
+      tokenParts.splice(i);
+      const [name] = ln.split(':');
+      tokenParts.push(JSON.parse(name));
+      const id = tokenParts.join('.');
+      if (id in changes) {
+        prefix = changes[id];
+      }
+    }
+    output += `${prefix} ${ln}\n`;
+  }
+  return output;
 }

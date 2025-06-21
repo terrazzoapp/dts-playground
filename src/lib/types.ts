@@ -5,7 +5,7 @@ export interface Resolver {
   name?: string;
   description?: string;
   sets: TokenSet[];
-  modifiers: Modifier[];
+  modifiers?: Modifier[];
 }
 
 export interface TokenSet {

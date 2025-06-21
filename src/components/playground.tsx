@@ -2,10 +2,11 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { createResolver } from '../lib/create-resolver.js';
 import figmaSds from '../lib/examples/figma-sds.js';
 import type { Modifier, Resolver } from '../lib/types.js';
-import { prettyJSON } from '../lib/utils.js';
+import { diffTokens, prettyJSON } from '../lib/utils.js';
 import CodeEditor from './code-editor.js';
 import s from './playground.module.css';
 import { Select } from './select.js';
+import { ZodError } from 'zod/v4';
 
 export default function Playground() {
   const [files] = useState<Record<string, string>>({ ...figmaSds });
@@ -41,6 +42,14 @@ export default function Playground() {
     () => createResolver(parsedTokens, parsedResolver),
     [parsedTokens, parsedResolver],
   );
+  const finalTokens = useMemo(() => {
+    const { $extensions = {}, ...result } = r.apply(values);
+    const modified: string[] = $extensions.modified ?? [];
+    return diffTokens(
+      prettyJSON(result),
+      Object.fromEntries(modified.map((id) => [id, '+'])),
+    );
+  }, [r, values]);
 
   return (
     <>
@@ -80,24 +89,28 @@ export default function Playground() {
           onChange={(contents = '') => {
             try {
               setErrors((value) => ({ ...value, [currentTab]: undefined }));
-              JSON.parse(contents);
+              const parsedContents = JSON.parse(contents);
               if (currentTab === 'resolver.json') {
-                const r = createResolver(parsedTokens, JSON.parse(contents));
+                const r = createResolver(parsedTokens, parsedContents);
                 r.apply(values);
-                setParsedResolver(JSON.parse(contents));
+                setParsedResolver(parsedContents);
               } else {
                 const r = createResolver(
-                  { ...parsedTokens, [currentTab]: JSON.parse(contents) },
+                  { ...parsedTokens, [currentTab]: parsedContents },
                   parsedResolver,
                 );
                 r.apply(values);
                 setParsedTokens((tokens) => ({
                   ...tokens,
-                  [currentTab]: JSON.parse(contents),
+                  [currentTab]: parsedContents,
                 }));
               }
             } catch (err) {
-              setErrors((value) => ({ ...value, [currentTab]: String(err) }));
+              const message =
+                err instanceof ZodError && Array.isArray(err)
+                  ? err.map((e) => e.message).join('\n')
+                  : String(err);
+              setErrors((value) => ({ ...value, [currentTab]: message }));
             }
           }}
         />
@@ -124,7 +137,7 @@ export default function Playground() {
       </div>
 
       <section className={s.final}>
-        <CodeEditor value={prettyJSON(r.apply(values))} />
+        <CodeEditor defaultLanguage="diff" value={finalTokens} />
       </section>
     </>
   );

@@ -4,14 +4,46 @@
  * of sync with the specification. In case of a deviation, prefer
  * the official specification over this example library.
  */
+import z from 'zod/v4';
 import { mergeTokenSets } from './set.js';
 import type { DTCGTokens, Resolver } from './types.js';
-import { mergeTokens } from './utils.js';
+import { getTokenIDs, mergeTokens } from './utils.js';
+
+const tokenMapSchema = z.looseObject({});
+
+function validateTokenMap<T extends Record<string, any>>(
+  tokenMap: unknown,
+): Record<string, T> {
+  return tokenMapSchema.parse(tokenMap);
+}
+const tokenSetSchema = z.object({
+  name: z.string({ error: 'Missing "name"' }),
+  values: z.array(z.string({ error: 'Expected string' })),
+});
+const resolverSchema = z.object({
+  name: z.string({ error: 'Missing "name"' }),
+  description: z.optional(z.string({ error: 'Expected string' })),
+  sets: z.array(tokenSetSchema, { error: 'Missing "sets"' }),
+  modifiers: z.optional(
+    z.array(
+      z.object({
+        name: z.string({ error: 'Missing "name"' }),
+        values: z.array(tokenSetSchema),
+      }),
+    ),
+  ),
+});
+
+function validateResolver(resolver: unknown): Resolver {
+  return resolverSchema.parse(resolver);
+}
 
 export function createResolver<T extends Record<string, any> = DTCGTokens>(
-  tokenMap: Record<string, T>,
-  resolver: Resolver,
+  tokenMapRaw: Record<string, T>,
+  resolverRaw: Resolver,
 ) {
+  const tokenMap = validateTokenMap<T>(tokenMapRaw);
+  const resolver = validateResolver(resolverRaw);
   if (!Object.keys(tokenMap ?? {}).length) {
     throw new Error(`Empty token map! No tokens to resolve`);
   }
@@ -48,6 +80,7 @@ export function createResolver<T extends Record<string, any> = DTCGTokens>(
       }
 
       let finalTokens = structuredClone(tokens);
+      const modified = new Set<string>();
 
       for (const [name, value] of Object.entries(values)) {
         const modifier = resolver.modifiers.find((mod) => mod.name === name);
@@ -60,14 +93,18 @@ export function createResolver<T extends Record<string, any> = DTCGTokens>(
           throw new Error(`Modifier ${name} has no ${value} defined`);
         }
         for (const id of modVal.values) {
-          finalTokens = mergeTokens(
-            finalTokens,
-            getTokens(id as keyof typeof tokenMap),
-          );
+          const modifiedTokens = getTokens(id as keyof typeof tokenMap);
+          for (const id of getTokenIDs(modifiedTokens)) {
+            modified.add(id);
+          }
+          finalTokens = mergeTokens(finalTokens, modifiedTokens);
         }
       }
 
-      return finalTokens;
+      return {
+        ...finalTokens,
+        $extensions: { modified: [...modified] },
+      };
     },
   };
 }

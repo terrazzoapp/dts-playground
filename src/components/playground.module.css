@@ -22,16 +22,18 @@
 }
 
 .tab {
+  align-items: center;
   background: none;
-  border-width: 3px;
-  border-style: solid;
   border-color: transparent;
+  border-style: solid;
+  border-width: 3px;
   color: inherit;
+  display: inline-flex;
   font-family: inherit;
+  font-size: 0.625rem;
   font-weight: 400;
   height: 2rem;
-  line-height: 2rem;
-  font-size: 0.625rem;
+  line-height: 1;
   padding: 0 0.5rem;
   white-space: nowrap;
 

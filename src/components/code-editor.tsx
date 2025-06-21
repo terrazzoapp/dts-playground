@@ -16,10 +16,14 @@ const MONACO_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions = {
 
 self.MonacoEnvironment = {
   getWorker(_, label) {
-    if (label === 'json') {
-      return new jsonWorker();
+    switch (label) {
+      case 'json': {
+        return new jsonWorker();
+      }
+      default: {
+        return new editorWorker();
+      }
     }
-    return new editorWorker();
   },
 };
 
