@@ -1,7 +1,7 @@
 .container {
   border-left: 1px solid #202020;
   display: grid;
-  grid-template-rows: var(--row-2-size) auto;
+  grid-template-rows: auto 1fr;
   height: 100%;
 }
 
@@ -9,10 +9,16 @@
   border: none;
   align-items: center;
   display: flex;
-  height: 2rem;
   gap: 1rem;
   padding-block: 0;
   padding-inline: 1rem;
+  scrollbar-gutter: stable;
+  scrollbar-color: currentColor #202020;
+  overflow-x: auto;
+
+  > * {
+    min-height: var(--row-2-size);
+  }
 }
 
 .modifierTitle {

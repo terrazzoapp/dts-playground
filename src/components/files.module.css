@@ -1,6 +1,6 @@
 .container {
   display: grid;
-  grid-template-rows: var(--row-2-size) auto;
+  grid-template-rows: auto 1fr;
   height: 100%;
 }
 
@@ -34,18 +34,19 @@
 
 .tablist {
   flex: 0 0 auto;
-  height: 2rem;
+  scrollbar-gutter: stable;
+  scrollbar-color: currentColor #202020;
   display: flex;
   margin: 0;
   overflow-x: auto;
   padding: 0;
-  width: 50vw;
 }
 
 .tabitem {
   display: inline-block;
   list-style: none;
   white-space: nowrap;
+  min-height: var(--row-2-size);
 }
 
 .tab {
